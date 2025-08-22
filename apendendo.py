@@ -1,21 +1,13 @@
 import telebot
+import os
+from dotenv import load_dotenv
 
-bot = telebot.TeleBot("z")
+load_dotenv()
 
-@bot.message_handler(["Start", "Hello"])
-def send_welcome(message):
-    bot.reply_to(message, "Olá Mundo")
+token = os.getenv("BOT_TOKEN")
 
-@bot.message_handler(["death"])
-def death(message):
-    bot.reply_to(message, "Ixi, qué não")
-    exit()
-    bot.send_message("Ixi, qué não")
-# +VTtCnJ7QZIJhOTIx
-@bot.message_handler(func=lambda m: True)
-def echo_all(message):
-    bot.reply_to(message, message)
+bot = telebot.TeleBot(token)
 
-bot.send_message(12, "Bom dia")
+bot.send_message(-1003083634589, "Bom dia")
 
-bot.infinity_polling()
+

@@ -3,6 +3,15 @@ from urllib.request import urlopen
 import urllib.error
 import json
 import time
+import os
+import telebot
+from dotenv import load_dotenv
+
+load_dotenv()
+
+token = os.getenv("BOT_TOKEN")
+grupo_id = os.getenv("GRUPO_ID")
+bot = telebot.TeleBot(token)
 
 url = "https://www.kabum.com.br/produto/782142/placa-de-video-msi-rtx-5070-12g-shadow-2x-oc-nvdia-geforce-12gb-gddr7-opengl-4-6-g-sync-g5070-12s2c"
 
@@ -26,24 +35,24 @@ while True:
         preco = (caixa.find_next("h4", class_="duration-500"))
         if preco:
             preco_float = float((preco.string).replace("R$", "").replace("\u00a0", "").replace(".", "").replace(",", "."))
-            produto = {"Nome": nome_produto.string, "Valor": f"{(preco_float)}" }
+            produto = {"Nome": nome_produto.string, "Valor": f"{(preco_float)}"}
             preco_ant = None    
             try:
                 with open("preco_produto.json", mode="r", encoding="utf-8") as read_file:
                     preco_ant = float(json.load(read_file)["Valor"])
             except FileNotFoundError:
-                print("Arquivo não encontrado")
+                bot.send_message(grupo_id, "Arquivo não encontrado")
             if preco_ant is None or preco_ant == preco_float:
-                print(f"{produto['Nome']} está custando R$ {produto['Valor']}")
+                bot.send_message(grupo_id, f"{produto['Nome']} está custando R$ {produto['Valor']}\n {url}")
             elif preco_ant < preco_float:
-                print(f"O preço do {produto['Nome']} aumentou R$ {preco_float - preco_ant} está custando R$ {produto['Valor']}.")
+                bot.send_message(grupo_id, f"O preço do {produto['Nome']} aumentou R$ {preco_float - preco_ant} está custando R$ {produto['Valor']}.\n {url}")
             else:
-                print(f"O preço do {produto['Nome']} diminuiu R$ { preco_ant - preco_float} está custando R$ {produto['Valor']}.")
+                bot.send_message(grupo_id, f"O preço do {produto['Nome']} diminuiu R$ { preco_ant - preco_float} está custando R$ {produto['Valor']}.\n {url}")
             if preco_ant is None or preco_ant != preco_float:
                 with open("preco_produto.json", mode="w", encoding="utf-8") as file:
                     json.dump(produto, file, indent=0)
         else:
-            print("Não Foi possivel encontrar o preço do produto")
+            bot.send_message(grupo_id, "Não Foi possivel encontrar o preço do produto \n {url}")
     else:
-        print("Não foi possivel encontrar o conteudo da pagina")
+        bot.send_message(grupo_id, "Não foi possivel encontrar o conteudo da pagina")
     time.sleep(30)
