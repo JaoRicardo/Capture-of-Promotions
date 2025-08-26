@@ -24,7 +24,7 @@ def buscar_produto(url):
     try:
         page = urlopen(url)
     except urllib.error.URLError:
-        return None
+        return ("erro na URL", "URL não existe ou está errada")
     
     html = page.read().decode("utf-8", errors="ignore")
     soup = BeautifulSoup(html, "html.parser")
@@ -36,11 +36,11 @@ def buscar_produto(url):
         preco = (caixa.find_next("h4", class_="duration-500"))
         if preco:
             preco_float = formatar_preco(preco)
-            return {"nome" : (nome_produto.string), "preco": preco_float}
+            return ("sucesso", {"nome" : (nome_produto.string), "preco": preco_float})
         else:
-            return 0
+            return ("erro no preço", "preço não pode ser encontrado")
     else:
-        return 0
+        return ("erro nos dados", "Não foi possivel encontrar os dados")
 
 def ler_produto_antigo(caminho_arquivo):
     try:
@@ -51,7 +51,7 @@ def ler_produto_antigo(caminho_arquivo):
     except FileNotFoundError:
         return None
 
-def enviar_messagem_telegram(id_do_chat, messagem):
+def enviar_mensagem_telegram(id_do_chat, messagem):
      bot.send_message(id_do_chat, messagem)
 
 def salvar_produto_novo(caminho_arquivo, produto):
@@ -60,23 +60,36 @@ def salvar_produto_novo(caminho_arquivo, produto):
 
 while True:
 
-    produto = buscar_produto(url)
-    if produto is None:
-        enviar_messagem_telegram(meu_id, f"A {url} não existe ou está incorreta\n tentando reconexão em 25 min")
-        time.sleep(1500)
-        continue
-    elif produto == 0:
-        enviar_messagem_telegram(meu_id, f"Não foi possivel encontrar o conteudo da pagina {url}.\n Tentando novamente em 5 min")
-        time.sleep(300)
-        continue
+    status, dados = buscar_produto(url)
+    match status:
+        case "sucesso":
+            produto = dados
+        case "erro na URL":
+            enviar_mensagem_telegram(meu_id, f"{dados}\n {url}.\nTentando reconexão em 25 min")
+            time.sleep(60)
+            continue
+        case "erro nos dados":
+            enviar_mensagem_telegram(meu_id, f"{dados}\n {url}.\nTentando reconexão em 25 min")
+            time.sleep(60)
+            continue
+        case "erro no preço":
+            enviar_mensagem_telegram(meu_id, f"{dados}\n {url}.\nTentando reconexão em 25 min")
+            time.sleep(60)
+            continue
     
     produto_ant = ler_produto_antigo("produto.json")
 
-    if produto_ant is None or produto_ant != produto:
-        enviar_messagem_telegram(grupo_id, f"{produto['nome']} está custando R$ {produto['preco']}\n {url}")
+    if produto_ant is None:
+        enviar_mensagem_telegram(grupo_id, f"{produto['nome']} está custando R$ {produto['preco']}\n {url}")   
         salvar_produto_novo("produto.json", produto)
-    elif produto_ant["preco"] < produto["preco"]:
-        enviar_messagem_telegram(grupo_id, f"O preço aumentou R$ {produto['preco'] - produto_ant['preco']}")
-    elif produto_ant["preco"] > produto["preco"]:
-        enviar_messagem_telegram(grupo_id, f"O preço diminuiu R$ {produto_ant['preco'] - produto['preco']}")
-    time.sleep(3600)
+    elif produto_ant == produto:
+        None
+    else:
+        if produto_ant != produto:
+            enviar_mensagem_telegram(grupo_id, f"{produto['nome']} está custando R$ {produto['preco']}\n {url}")
+            if produto_ant["preco"] < produto["preco"]:
+                enviar_mensagem_telegram(grupo_id, f"O preço aumentou R$ {produto['preco'] - produto_ant['preco']}")
+            elif produto_ant["preco"] > produto["preco"]:
+                enviar_mensagem_telegram(grupo_id, f"O preço diminuiu R$ {produto_ant['preco'] - produto['preco']}")
+            salvar_produto_novo("produto.json", produto)
+    time.sleep(600)
